@@ -6,13 +6,19 @@ export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
-# Opam and refinedc
-eval $(opam env)
-# [[ ! -r /home/t/.opam/opam-init/init.zsh ]] || source /home/t/.opam/opam-init/init.zsh  > /dev/null 2> /dev/null
+FNM_PATH="/home/u/.local/share/fnm"
+if [ -d "$FNM_PATH" ]; then
+  export PATH="/home/u/.local/share/fnm:$PATH"
+  eval "`fnm env`"
+fi
 
 zz() {
    __zoxide_z "$@" && exa --color=auto --icons
 }
+
+export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
+# go
+export PATH=$PATH:~/.local/go/bin
 
 # flutter
 export ANDROID_SDK_ROOT='/opt/android-sdk'

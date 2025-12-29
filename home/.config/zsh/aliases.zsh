@@ -1,6 +1,7 @@
 ##
 ## Aliases
 ##
+alias clp='xclip -selection clipboard < '
 alias server='ssh root@37.143.8.79'
 alias btop='btop --utf-force'
 alias pysrc='source .venv/bin/activate'
@@ -8,7 +9,6 @@ alias mirrors='sudo reflector --verbose --country 'Russia,Estonia' -l 20 --sort 
 alias format='find . \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -exec clang-format -i {} \;'
 alias dockerstopall='docker stop $(docker ps -a -q)'
 alias pyenvir='python -m venv .venv && source .venv/bin/activate && pi install -r requirements.txt'
-alias code='vscodium'
 alias pi='$PWD/.venv/bin/pip'
 alias py='$PWD/.venv/bin/python'
 alias y='yay --noconfirm'
