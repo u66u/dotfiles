@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+import subprocess
+import sys
+import os
+import random
+import argparse
+from datetime import datetime, timezone
+
+R = "\033[0;31m"
+G = "\033[0;32m"
+Y = "\033[1;33m"
+C = "\033[0;36m"
+N = "\033[0m"
+
+
+def run(cmd):
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return r.returncode, r.stdout.strip()
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("mins", type=int, nargs="?")
+    p.add_argument("msg", nargs="?", default="Auto commit")
+    p.add_argument("--dry-run", action="store_true")
+    a = p.parse_args()
+
+    if a.mins is None:
+        print("Usage: script.py <minutes> [message]")
+        sys.exit(1)
+
+    if run("git rev-parse HEAD")[0] != 0:
+        print(f"{R}Not a git repo or no commits{N}")
+        sys.exit(1)
+
+    _, h = run("git log -1 --format=%h")
+    _, m = run("git log -1 --format=%s")
+    _, ts = run("git log -1 --format=%at")
+    last = int(ts)
+
+    tz = datetime.now(timezone.utc).astimezone().tzinfo
+    last_dt = datetime.fromtimestamp(last, tz)
+
+    secs = random.randint(0, 59)
+    new = last + a.mins * 60 + secs
+    new_dt = datetime.fromtimestamp(new, tz)
+
+    git_date = new_dt.strftime("%Y-%m-%d %H:%M:%S %z")
+
+    hrs, mins = abs(a.mins) // 60, abs(a.mins) % 60
+    dir = "after" if a.mins >= 0 else "before"
+    off = f"{f'{hrs}h ' if hrs else ''}{f'{mins}m ' if mins else ''}{secs}s {dir}"
+
+    print(f"{G}{'='*50}{N}")
+    print(f"Last: {C}{h}{N} - {m[:30]}")
+    print(f"Last time: {Y}{last_dt:%Y-%m-%d %H:%M:%S}{N}")
+    print(f"New time:  {Y}{new_dt:%Y-%m-%d %H:%M:%S}{N}")
+    print(f"Offset:    {Y}{off}{N} ({a.mins}m + {secs}s)")
+    print(f"Message:   {Y}{a.msg}{N}")
+    print(f"{G}{'='*50}{N}")
+
+    if a.dry_run:
+        print(f"\n{C}[DRY RUN]{N}")
+        sys.exit(0)
+
+    if run("git diff --cached --quiet")[0] == 0:
+        print(f"{Y}No staged changes. Stage all? (y/n): {N}", end="")
+        if input().strip().lower() == "y":
+            run("git add -A")
+        else:
+            sys.exit(0)
+
+    env = os.environ.copy()
+    env["GIT_AUTHOR_DATE"] = git_date
+    env["GIT_COMMITTER_DATE"] = git_date
+
+    r = subprocess.run(
+        ["git", "commit", "-m", a.msg], env=env, capture_output=True, text=True
+    )
+
+    if r.returncode == 0:
+        print(r.stdout)
+        print(f"{G}Done!{N}")
+        _, log = run('git log -1 --format="Hash: %H%nDate: %ad%nMsg: %s"')
+        print(f"\n{Y}New commit:{N}\n{log}")
+    else:
+        print(f"{R}Failed: {r.stderr}{N}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

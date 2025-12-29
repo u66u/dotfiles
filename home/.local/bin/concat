@@ -1,0 +1,78 @@
+import os
+import sys
+import argparse
+import fnmatch
+
+
+def match(path, patterns):
+    if not patterns:
+        return False
+    for p in patterns:
+        if fnmatch.fnmatch(path, p) or fnmatch.fnmatch(os.path.basename(path), p):
+            return True
+    return False
+
+
+def concat(path, include_patterns=None, exclude_patterns=None):
+    for root, dirs, files in os.walk(path):
+        dirs.sort()
+        if exclude_patterns:
+            dirs[:] = [d for d in dirs if not match(d, exclude_patterns)]
+        files.sort()
+        for f in files:
+            path = os.path.join(root, f)
+            relative_path = os.path.relpath(path, path)
+
+            if include_patterns and not match(relative_path, include_patterns):
+                continue
+
+            if match(relative_path, exclude_patterns):
+                continue
+
+            print(f"// {relative_path}: \n")
+
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    print(content)
+            except (UnicodeDecodeError, PermissionError, IOError) as e:
+                print(f"[Error reading file: {e}]\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        epilog="""
+Examples:
+  %(prog)s /path/to/folder
+  %(prog)s /path/to/folder -i "*.py" "*.js"
+  %(prog)s /path/to/folder -e "*.log" "node_modules" ".git"
+  %(prog)s /path/to/folder -i "*.py" -e "__pycache__" "*.pyc"
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("path", help="Path to the folder to process")
+    parser.add_argument(
+        "-i",
+        "--include",
+        nargs="+",
+        metavar="PATTERN",
+    )
+    parser.add_argument(
+        "-e",
+        "--exclude",
+        nargs="+",
+        metavar="PATTERN",
+    )
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.path):
+        print(f"path '{args.path}' does not exist", file=sys.stderr)
+        sys.exit(1)
+
+    concat(args.path, args.include, args.exclude or [])
+
+
+if __name__ == "__main__":
+    main()
